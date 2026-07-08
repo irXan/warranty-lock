@@ -56,7 +56,7 @@ export function StatusStepper({ receipt }: { receipt: Receipt }) {
                 state === "done" &&
                   "border-success bg-success text-success-foreground",
                 state === "active" &&
-                  "border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px_hsl(var(--primary)/0.15)] animate-pulse-ring",
+                  "border-primary bg-primary text-primary-foreground ring-4 ring-primary/20 animate-pulse",
                 state === "future" && "border-border bg-background text-muted-foreground",
               )}
             >
