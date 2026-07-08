@@ -77,14 +77,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Warranty Flow — Immutable Repair Receipts" },
+      {
+        name: "description",
+        content:
+          "Warranty Flow lets electronics workshops issue tamper-proof repair receipts and gives customers a live Track ID to follow every repair stage.",
+      },
+      { name: "author", content: "Warranty Flow" },
+      { property: "og:title", content: "Warranty Flow — Immutable Repair Receipts" },
+      {
+        property: "og:description",
+        content:
+          "Issue locked repair receipts and let customers track their device with a unique ID.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
