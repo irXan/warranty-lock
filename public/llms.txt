@@ -5,3 +5,4 @@
 ## Pages
 
 - [Home](/): Create immutable repair receipts (admin) and track repair status by Track ID (customer).
+- [Auto repair invoice generator](/invoice-generator): Free tool to build and print/PDF an auto repair invoice with labor and parts line items.
