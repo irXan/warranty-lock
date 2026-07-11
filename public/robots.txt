@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://warranty-lock.lovable.app/sitemap.xml
