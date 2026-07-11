@@ -1,0 +1,7 @@
+# Warranty Flow
+
+> Immutable electronics repair receipts and customer-facing repair tracking. Workshops issue tamper-proof receipts; customers follow every repair stage with a unique Track ID.
+
+## Pages
+
+- [Home](/): Create immutable repair receipts (admin) and track repair status by Track ID (customer).
