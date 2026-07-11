@@ -6,6 +6,25 @@ import { CustomerPanel } from "@/components/warranty/CustomerPanel";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "Warranty Flow — Immutable Repair Receipts & Tracking" },
+      {
+        name: "description",
+        content:
+          "Issue tamper-proof electronics repair receipts and let customers track every repair stage with a unique Track ID.",
+      },
+      { property: "og:title", content: "Warranty Flow — Immutable Repair Receipts & Tracking" },
+      {
+        property: "og:description",
+        content:
+          "Issue locked repair receipts and let customers follow their device through every repair stage.",
+      },
+      { property: "og:url", content: "https://warranty-lock.lovable.app/" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "https://warranty-lock.lovable.app/" }],
+  }),
 });
 
 function Index() {
