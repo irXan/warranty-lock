@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState, cloneElement, isValidElement, type ReactElement } from "react";
 import { FileLock2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,13 +155,28 @@ function Field({
   error?: string;
   children: React.ReactNode;
 }) {
+  const id = useId();
+  const describedById = error ? `${id}-error` : undefined;
+  const child = isValidElement(children)
+    ? cloneElement(children as ReactElement<Record<string, unknown>>, {
+        id,
+        "aria-describedby": describedById,
+      })
+    : children;
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <Label
+        htmlFor={id}
+        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
         {label}
       </Label>
-      {children}
-      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+      {child}
+      {error ? (
+        <p id={describedById} className="text-xs font-medium text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
