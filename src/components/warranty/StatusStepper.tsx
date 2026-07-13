@@ -22,7 +22,6 @@ function fmt(iso: string): string {
 
 export function StatusStepper({ receipt }: { receipt: Receipt }) {
   const warranty = getWarrantyInfo(receipt);
-  const deliveredIdx = STATUS_STAGES.indexOf("Delivered");
   // Derived step: once delivered, warranty stage becomes active (or done if expired).
   const currentIdx =
     warranty.state === "expired"
