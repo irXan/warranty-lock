@@ -1,11 +1,23 @@
 import { useId, useState, cloneElement, isValidElement, type ReactElement } from "react";
-import { FileLock2 } from "lucide-react";
+import { FileLock2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { addReceipt, type NewReceiptInput } from "@/lib/warranty-db";
+import {
+  addReceipt,
+  DEFAULT_WARRANTY_DAYS,
+  WARRANTY_OPTIONS,
+  type NewReceiptInput,
+} from "@/lib/warranty-db";
 import { TrackIdModal } from "./TrackIdModal";
 
 type Errors = Partial<Record<keyof NewReceiptInput, string>>;
@@ -16,6 +28,7 @@ const initial: NewReceiptInput = {
   deviceModel: "",
   serialNumber: "",
   issueDescription: "",
+  warrantyDays: DEFAULT_WARRANTY_DAYS,
 };
 
 function validate(v: NewReceiptInput): Errors {
@@ -47,6 +60,7 @@ export function ReceiptForm() {
       deviceModel: values.deviceModel.trim(),
       serialNumber: values.serialNumber.trim(),
       issueDescription: values.issueDescription.trim(),
+      warrantyDays: values.warrantyDays,
     };
     const errs = validate(trimmed);
     if (Object.keys(errs).length > 0) {
@@ -128,6 +142,35 @@ export function ReceiptForm() {
               )}
             />
           </Field>
+        </div>
+
+        <div className="sm:col-span-2">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" />
+              <div>
+                <Label className="text-sm font-medium text-foreground">Warranty period</Label>
+                <p className="text-xs text-muted-foreground">
+                  Starts automatically when the device is marked <em>Delivered</em>.
+                </p>
+              </div>
+            </div>
+            <Select
+              value={String(values.warrantyDays)}
+              onValueChange={(v) => update("warrantyDays", Number(v))}
+            >
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WARRANTY_OPTIONS.map((o) => (
+                  <SelectItem key={o.days} value={String(o.days)}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="sm:col-span-2 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
