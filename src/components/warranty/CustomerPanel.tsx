@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { AlertCircle, Search } from "lucide-react";
+import { AlertCircle, Search, ShieldCheck, ShieldOff, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { findByTrackId, type Receipt } from "@/lib/warranty-db";
+import { findByTrackId, getWarrantyInfo, type Receipt } from "@/lib/warranty-db";
 import { useReceipts } from "@/hooks/use-warranty-db";
 import { StatusStepper } from "./StatusStepper";
+import { cn } from "@/lib/utils";
 
 export function CustomerPanel() {
   const [query, setQuery] = useState("");
@@ -114,10 +115,59 @@ function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
         </div>
       </dl>
 
+      <WarrantyCard receipt={receipt} />
+
       <div className="pt-2">
         <h3 className="mb-4 text-sm font-semibold text-foreground">Progress</h3>
         <StatusStepper receipt={receipt} />
       </div>
+    </div>
+  );
+}
+
+function WarrantyCard({ receipt }: { receipt: Receipt }) {
+  const w = getWarrantyInfo(receipt);
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+
+  const styles =
+    w.state === "active"
+      ? "border-success/30 bg-success/5 text-success"
+      : w.state === "expired"
+        ? "border-destructive/30 bg-destructive/5 text-destructive"
+        : "border-border bg-muted/40 text-muted-foreground";
+
+  const Icon = w.state === "active" ? ShieldCheck : w.state === "expired" ? ShieldOff : ShieldAlert;
+  const heading =
+    w.state === "active"
+      ? "Warranty active"
+      : w.state === "expired"
+        ? "Warranty expired"
+        : "Warranty starts on delivery";
+
+  return (
+    <div className={cn("flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between", styles)}>
+      <div className="flex items-start gap-3">
+        <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+        <div>
+          <div className="text-sm font-semibold">{heading}</div>
+          <div className="mt-0.5 text-xs opacity-80">
+            {w.state === "pending" && `${w.days}-day cover begins the moment the device is marked Delivered.`}
+            {w.state === "active" && w.expiresAt && (
+              <>
+                {w.daysRemaining} day{w.daysRemaining === 1 ? "" : "s"} left · expires {fmtDate(w.expiresAt)}
+              </>
+            )}
+            {w.state === "expired" && w.expiresAt && <>Expired on {fmtDate(w.expiresAt)}</>}
+          </div>
+        </div>
+      </div>
+      {w.state !== "pending" && (
+        <div className="text-right text-xs">
+          <div className="opacity-70">Period</div>
+          <div className="font-medium">{w.days} days</div>
+        </div>
+      )}
     </div>
   );
 }
