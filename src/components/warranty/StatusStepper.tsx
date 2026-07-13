@@ -1,6 +1,15 @@
-import { Check } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { STATUS_STAGES, type Receipt, type StatusName } from "@/lib/warranty-db";
+import {
+  STATUS_STAGES,
+  getWarrantyInfo,
+  type Receipt,
+  type StatusName,
+} from "@/lib/warranty-db";
+
+const WARRANTY_STAGE = "Warranty Active" as const;
+type StepName = StatusName | typeof WARRANTY_STAGE;
+const ALL_STAGES: StepName[] = [...STATUS_STAGES, WARRANTY_STAGE];
 
 function fmt(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -12,7 +21,15 @@ function fmt(iso: string): string {
 }
 
 export function StatusStepper({ receipt }: { receipt: Receipt }) {
-  const currentIdx = STATUS_STAGES.indexOf(receipt.currentStatus);
+  const warranty = getWarrantyInfo(receipt);
+  const deliveredIdx = STATUS_STAGES.indexOf("Delivered");
+  // Derived step: once delivered, warranty stage becomes active (or done if expired).
+  const currentIdx =
+    warranty.state === "expired"
+      ? ALL_STAGES.length // everything done
+      : warranty.state === "active"
+        ? ALL_STAGES.indexOf(WARRANTY_STAGE)
+        : STATUS_STAGES.indexOf(receipt.currentStatus);
   const timestampByStatus = new Map<StatusName, string>();
   for (const entry of receipt.statusHistory) {
     if (!timestampByStatus.has(entry.status)) {
@@ -22,11 +39,25 @@ export function StatusStepper({ receipt }: { receipt: Receipt }) {
 
   return (
     <ol className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between md:gap-2">
-      {STATUS_STAGES.map((stage, idx) => {
+      {ALL_STAGES.map((stage, idx) => {
         const state: "done" | "active" | "future" =
           idx < currentIdx ? "done" : idx === currentIdx ? "active" : "future";
-        const ts = timestampByStatus.get(stage);
-        const isLast = idx === STATUS_STAGES.length - 1;
+        const isWarranty = stage === WARRANTY_STAGE;
+        const ts = isWarranty
+          ? warranty.startedAt ?? undefined
+          : timestampByStatus.get(stage as StatusName);
+        const isLast = idx === ALL_STAGES.length - 1;
+        const subtitle = isWarranty
+          ? warranty.state === "active"
+            ? `${warranty.daysRemaining} day${warranty.daysRemaining === 1 ? "" : "s"} left`
+            : warranty.state === "expired"
+              ? "Expired"
+              : `${warranty.days}-day cover`
+          : ts
+            ? fmt(ts)
+            : state === "future"
+              ? "Pending"
+              : "";
 
         return (
           <li key={stage} className="relative flex flex-1 gap-3 md:flex-col md:items-center md:text-center">
@@ -60,7 +91,13 @@ export function StatusStepper({ receipt }: { receipt: Receipt }) {
                 state === "future" && "border-border bg-background text-muted-foreground",
               )}
             >
-              {state === "done" ? <Check className="h-4 w-4" /> : idx + 1}
+              {isWarranty ? (
+                <ShieldCheck className="h-4 w-4" />
+              ) : state === "done" ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                idx + 1
+              )}
             </div>
 
             <div className="min-w-0 flex-1 md:mt-2 md:flex-none">
@@ -72,9 +109,7 @@ export function StatusStepper({ receipt }: { receipt: Receipt }) {
               >
                 {stage}
               </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {ts ? fmt(ts) : state === "future" ? "Pending" : ""}
-              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
             </div>
           </li>
         );
