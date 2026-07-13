@@ -1,4 +1,4 @@
-import { ClipboardList, Lock } from "lucide-react";
+import { ClipboardList, Lock, ShieldCheck, ShieldOff } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -10,6 +10,7 @@ import { useReceipts } from "@/hooks/use-warranty-db";
 import {
   STATUS_STAGES,
   updateStatus,
+  getWarrantyInfo,
   type Receipt,
   type StatusName,
 } from "@/lib/warranty-db";
@@ -69,6 +70,7 @@ function JobCard({ receipt }: { receipt: Receipt }) {
               {receipt.trackId}
             </span>
             <span className="text-xs text-muted-foreground">{fmtDate(receipt.createdAt)}</span>
+            <WarrantyPill receipt={receipt} />
           </div>
           <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div>
@@ -108,5 +110,24 @@ function JobCard({ receipt }: { receipt: Receipt }) {
         </div>
       </div>
     </li>
+  );
+}
+
+function WarrantyPill({ receipt }: { receipt: Receipt }) {
+  const w = getWarrantyInfo(receipt);
+  if (w.state === "pending") return null;
+  if (w.state === "active") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+        <ShieldCheck className="h-3 w-3" />
+        Warranty · {w.daysRemaining}d left
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+      <ShieldOff className="h-3 w-3" />
+      Warranty expired
+    </span>
   );
 }
