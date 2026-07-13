@@ -162,7 +162,8 @@ export function updateStatus(trackId: string, status: StatusName): Receipt | nul
 export function findByTrackId(trackId: string): Receipt | null {
   const target = trackId.trim().toUpperCase();
   const db = getDb();
-  return db.receipts.find((r) => r.trackId.toUpperCase() === target) ?? null;
+  const r = db.receipts.find((x) => x.trackId.toUpperCase() === target);
+  return r ? migrate(r) : null;
 }
 
 export function listReceipts(): Receipt[] {
