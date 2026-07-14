@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header, type View } from "@/components/warranty/Header";
 import { AdminPanel } from "@/components/warranty/AdminPanel";
 import { CustomerPanel } from "@/components/warranty/CustomerPanel";
@@ -29,6 +29,14 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [view, setView] = useState<View>("admin");
+
+  // Deep-link from QR / shared URL: /?track=... opens the customer view.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("track")) setView("customer");
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header view={view} onChange={setView} />

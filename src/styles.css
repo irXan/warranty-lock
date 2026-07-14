@@ -146,3 +146,22 @@
     color: var(--color-foreground);
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    position: absolute !important;
+    inset: 0 !important;
+    padding: 24px !important;
+    background: white !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

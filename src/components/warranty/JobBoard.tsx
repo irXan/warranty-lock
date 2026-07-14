@@ -1,4 +1,7 @@
-import { ClipboardList, Lock, ShieldCheck, ShieldOff } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ClipboardList, Lock, Printer, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,6 +17,7 @@ import {
   type Receipt,
   type StatusName,
 } from "@/lib/warranty-db";
+import { printReceipt } from "@/lib/print-receipt";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -27,6 +31,26 @@ function fmtDate(iso: string): string {
 
 export function JobBoard() {
   const receipts = useReceipts();
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return receipts;
+    return receipts.filter((r) =>
+      [
+        r.trackId,
+        r.customerName,
+        r.customerPhone,
+        r.deviceModel,
+        r.serialNumber,
+        r.issueDescription,
+        r.currentStatus,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [receipts, query]);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
@@ -44,13 +68,29 @@ export function JobBoard() {
         </div>
       </div>
 
+      {receipts.length > 0 && (
+        <div className="mb-4 relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by Track ID, customer, device, serial…"
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {receipts.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
           Create your first receipt to see it here.
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+          No repairs match “{query}”.
+        </div>
       ) : (
         <ul className="space-y-3">
-          {receipts.map((r) => (
+          {filtered.map((r) => (
             <JobCard key={r.trackId} receipt={r} />
           ))}
         </ul>
@@ -107,6 +147,15 @@ function JobCard({ receipt }: { receipt: Receipt }) {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 w-full gap-2"
+            onClick={() => printReceipt(receipt)}
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Print / PDF
+          </Button>
         </div>
       </div>
     </li>
