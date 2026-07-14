@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { AlertCircle, Search, ShieldCheck, ShieldOff, ShieldAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, Printer, Search, ShieldCheck, ShieldOff, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { findByTrackId, getWarrantyInfo, type Receipt } from "@/lib/warranty-db";
 import { useReceipts } from "@/hooks/use-warranty-db";
 import { StatusStepper } from "./StatusStepper";
+import { printReceipt } from "@/lib/print-receipt";
 import { cn } from "@/lib/utils";
 
 export function CustomerPanel() {
@@ -18,9 +19,8 @@ export function CustomerPanel() {
   const liveResult =
     searchedId != null ? receipts.find((r) => r.trackId === searchedId) ?? null : result;
 
-  const submit = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const q = query.trim();
+  const runSearch = (raw: string) => {
+    const q = raw.trim();
     if (!q) return;
     const found = findByTrackId(q);
     if (!found) {
@@ -35,6 +35,23 @@ export function CustomerPanel() {
     setSearchedId(found.trackId);
     setError(null);
   };
+
+  const submit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    runSearch(query);
+  };
+
+  // Auto-lookup when arriving via QR code URL: /?track=WF-YYYY-XXXX
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("track");
+    if (t) {
+      setQuery(t);
+      runSearch(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -91,8 +108,19 @@ function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
           </div>
           <div className="font-mono text-lg font-semibold text-foreground">{receipt.trackId}</div>
         </div>
-        <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-          {receipt.currentStatus}
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            {receipt.currentStatus}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => printReceipt(receipt)}
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Print / PDF
+          </Button>
         </div>
       </div>
 
