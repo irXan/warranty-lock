@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Printer, Search, ShieldCheck, ShieldOff, ShieldAlert } from "lucide-react";
+import {
+  AlertCircle,
+  Printer,
+  Search,
+  ShieldCheck,
+  ShieldOff,
+  ShieldAlert,
+  PackageSearch,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { findByTrackId, getWarrantyInfo, type Receipt } from "@/lib/warranty-db";
 import { useReceipts } from "@/hooks/use-warranty-db";
 import { StatusStepper } from "./StatusStepper";
 import { printReceipt } from "@/lib/print-receipt";
+import { decodeSharedReceipt } from "@/lib/receipt-share";
+import { ImmutableBadge } from "./ImmutableBadge";
 import { cn } from "@/lib/utils";
 
 export function CustomerPanel() {
@@ -23,16 +34,25 @@ export function CustomerPanel() {
     const q = raw.trim();
     if (!q) return;
     const found = findByTrackId(q);
-    if (!found) {
+    // Cross-device fallback: if the QR/deep link included a payload in the
+    // URL fragment, hydrate from it so scanning on another phone works.
+    const shared = readSharedFromHash();
+    const fallback =
+      !found && shared && shared.trackId.toUpperCase() === q.toUpperCase() ? shared : null;
+    const record = found ?? fallback;
+    if (!record) {
       setResult(null);
       setSearchedId(null);
       setError(
         "No active repair file found for this ID. Please check your spelling or contact the workshop.",
       );
+      toast.error("No repair found for that Track ID");
       return;
     }
-    setResult(found);
-    setSearchedId(found.trackId);
+    setResult(record);
+    // Only track by ID when it lives in this device's DB — shared receipts
+    // are one-shot renders and shouldn't attempt live subscription.
+    setSearchedId(found ? record.trackId : null);
     setError(null);
   };
 
@@ -47,8 +67,9 @@ export function CustomerPanel() {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("track");
     if (t) {
-      setQuery(t);
-      runSearch(t);
+      const upper = t.toUpperCase();
+      setQuery(upper);
+      runSearch(upper);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -98,6 +119,15 @@ export function CustomerPanel() {
   );
 }
 
+function readSharedFromHash(): Receipt | null {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash;
+  if (!hash) return null;
+  const match = hash.match(/[#&]r=([^&]+)/);
+  if (!match) return null;
+  return decodeSharedReceipt(match[1]);
+}
+
 function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
@@ -106,7 +136,12 @@ function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
             Track ID
           </div>
-          <div className="font-mono text-lg font-semibold text-foreground">{receipt.trackId}</div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-lg font-semibold text-foreground">
+              {receipt.trackId}
+            </span>
+            <ImmutableBadge variant="compact" />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -116,13 +151,18 @@ function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={() => printReceipt(receipt)}
+            onClick={async () => {
+              await printReceipt(receipt);
+              toast.success("Opened printable receipt");
+            }}
           >
             <Printer className="h-3.5 w-3.5" />
             Print / PDF
           </Button>
         </div>
       </div>
+
+      <ImmutableBadge />
 
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <MetaRow label="Customer" value={receipt.customerName} />
