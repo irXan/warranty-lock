@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Lock, LogOut } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,7 @@ export function AdminAuthGate({ children }: Props) {
             onClick={() => {
               signOut();
               setAuthed(false);
+              toast.success("Signed out");
             }}
           >
             <LogOut className="h-4 w-4" />
@@ -58,13 +60,19 @@ export function AdminAuthGate({ children }: Props) {
       await setPasscode(pass);
       setBusy(false);
       setAuthed(true);
+      toast.success("Passcode created — you're signed in");
       return;
     }
     setBusy(true);
     const ok = await verifyPasscode(pass);
     setBusy(false);
-    if (!ok) return setError("Incorrect passcode.");
+    if (!ok) {
+      setError("Incorrect passcode.");
+      toast.error("Incorrect passcode");
+      return;
+    }
     setAuthed(true);
+    toast.success("Signed in");
   };
 
   return (

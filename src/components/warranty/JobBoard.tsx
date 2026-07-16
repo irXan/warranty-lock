@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { ClipboardList, Lock, Printer, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import {
+  ClipboardList,
+  Lock,
+  Printer,
+  Search,
+  SearchX,
+  ShieldCheck,
+  ShieldOff,
+  Inbox,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +28,7 @@ import {
   type StatusName,
 } from "@/lib/warranty-db";
 import { printReceipt } from "@/lib/print-receipt";
+import { EmptyState } from "./EmptyState";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -81,13 +92,17 @@ export function JobBoard() {
       )}
 
       {receipts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-          Create your first receipt to see it here.
-        </div>
+        <EmptyState
+          icon={Inbox}
+          title="No receipts yet"
+          description="Use the form above to create your first immutable repair receipt — it will land here instantly."
+        />
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-          No repairs match “{query}”.
-        </div>
+        <EmptyState
+          icon={SearchX}
+          title="No matches found"
+          description={`Nothing matched “${query}”. Try a different Track ID, customer, device, or serial.`}
+        />
       ) : (
         <ul className="space-y-3">
           {filtered.map((r) => (
@@ -134,7 +149,14 @@ function JobCard({ receipt }: { receipt: Receipt }) {
           </label>
           <Select
             value={receipt.currentStatus}
-            onValueChange={(v) => updateStatus(receipt.trackId, v as StatusName)}
+            onValueChange={(v) => {
+              const next = v as StatusName;
+              if (next === receipt.currentStatus) return;
+              updateStatus(receipt.trackId, next);
+              toast.success(`Status updated to “${next}”`, {
+                description: receipt.trackId,
+              });
+            }}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -151,7 +173,10 @@ function JobCard({ receipt }: { receipt: Receipt }) {
             variant="outline"
             size="sm"
             className="mt-2 w-full gap-2"
-            onClick={() => printReceipt(receipt)}
+            onClick={async () => {
+              await printReceipt(receipt);
+              toast.success("Opened printable receipt");
+            }}
           >
             <Printer className="h-3.5 w-3.5" />
             Print / PDF
