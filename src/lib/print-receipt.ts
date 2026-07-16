@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { getWarrantyInfo, type Receipt } from "./warranty-db";
+import { buildTrackUrl } from "./receipt-share";
 
 function escapeHtml(s: string): string {
   return s
@@ -21,7 +22,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export async function printReceipt(receipt: Receipt): Promise<void> {
-  const trackUrl = `${window.location.origin}/?track=${encodeURIComponent(receipt.trackId)}`;
+  const trackUrl = buildTrackUrl(receipt);
   const qrDataUrl = await QRCode.toDataURL(trackUrl, {
     width: 240,
     margin: 1,
@@ -86,6 +87,11 @@ export async function printReceipt(receipt: Receipt): Promise<void> {
       <div class="label" style="margin-top:8px">Status</div>
       <div style="font-weight:600">${escapeHtml(receipt.currentStatus)}</div>
     </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin:0 0 18px;padding:10px 12px;border:1px solid #16a34a33;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    <div><strong>Verified Immutable Record.</strong> Customer and device information cannot be modified after receipt creation. Only repair status can be updated.</div>
   </div>
 
   <div class="grid">

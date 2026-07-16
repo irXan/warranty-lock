@@ -1,5 +1,6 @@
 import { useId, useState, cloneElement, isValidElement, type ReactElement } from "react";
 import { FileLock2, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,12 +66,16 @@ export function ReceiptForm() {
     const errs = validate(trimmed);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      toast.error("Please fix the highlighted fields");
       return;
     }
     const receipt = addReceipt(trimmed);
     setValues(initial);
     setErrors({});
     setNewTrackId(receipt.trackId);
+    toast.success("Immutable receipt generated", {
+      description: `Track ID ${receipt.trackId} is now locked.`,
+    });
   };
 
   return (
