@@ -14,16 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      receipts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_status: Database["public"]["Enums"]["repair_status"]
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          delivered_at: string | null
+          device_model: string
+          id: string
+          issue_description: string
+          serial_number: string
+          track_id: string
+          warranty_days: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_status?: Database["public"]["Enums"]["repair_status"]
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          delivered_at?: string | null
+          device_model: string
+          id?: string
+          issue_description: string
+          serial_number: string
+          track_id: string
+          warranty_days?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_status?: Database["public"]["Enums"]["repair_status"]
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          delivered_at?: string | null
+          device_model?: string
+          id?: string
+          issue_description?: string
+          serial_number?: string
+          track_id?: string
+          warranty_days?: number
+        }
+        Relationships: []
+      }
+      status_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          receipt_id: string
+          status: Database["public"]["Enums"]["repair_status"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          receipt_id: string
+          status: Database["public"]["Enums"]["repair_status"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          receipt_id?: string
+          status?: Database["public"]["Enums"]["repair_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "status_events_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_receipt_by_track_id: { Args: { _track_id: string }; Returns: Json }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "customer"
+      repair_status:
+        | "Received"
+        | "Diagnosing"
+        | "In Repair"
+        | "Ready for Pickup"
+        | "Delivered"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +287,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "customer"],
+      repair_status: [
+        "Received",
+        "Diagnosing",
+        "In Repair",
+        "Ready for Pickup",
+        "Delivered",
+      ],
+    },
   },
 } as const
