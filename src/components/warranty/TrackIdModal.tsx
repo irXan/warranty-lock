@@ -11,33 +11,31 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { findByTrackId } from "@/lib/warranty-db";
+import type { Receipt } from "@/lib/warranty-db";
 import { printReceipt } from "@/lib/print-receipt";
 import { buildTrackUrl } from "@/lib/receipt-share";
 import { ImmutableBadge } from "./ImmutableBadge";
 
 interface Props {
-  trackId: string | null;
+  receipt: Receipt | null;
   onClose: () => void;
 }
 
-export function TrackIdModal({ trackId, onClose }: Props) {
+export function TrackIdModal({ receipt, onClose }: Props) {
+  const trackId = receipt?.trackId ?? null;
   const [copied, setCopied] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!trackId) {
+    if (!receipt) {
       setQr(null);
       return;
     }
-    const receipt = findByTrackId(trackId);
-    const url = receipt
-      ? buildTrackUrl(receipt)
-      : `${window.location.origin}/?track=${encodeURIComponent(trackId)}`;
+    const url = buildTrackUrl(receipt);
     QRCode.toDataURL(url, { width: 200, margin: 1, color: { dark: "#0f172a", light: "#ffffff" } })
       .then(setQr)
       .catch(() => setQr(null));
-  }, [trackId]);
+  }, [receipt]);
 
   const copy = async () => {
     if (!trackId) return;
@@ -52,17 +50,14 @@ export function TrackIdModal({ trackId, onClose }: Props) {
   };
 
   const print = async () => {
-    if (!trackId) return;
-    const r = findByTrackId(trackId);
-    if (r) {
-      await printReceipt(r);
-      toast.success("Opened printable receipt");
-    }
+    if (!receipt) return;
+    await printReceipt(receipt);
+    toast.success("Opened printable receipt");
   };
 
   return (
     <Dialog
-      open={!!trackId}
+      open={!!receipt}
       onOpenChange={(open) => {
         if (!open) {
           setCopied(false);

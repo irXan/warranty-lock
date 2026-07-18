@@ -1,44 +1,141 @@
-## Warranty Flow — Build Plan
+# Phase 2 — Warranty Flow Supabase Migration Plan
 
-### Stack note
-Your SRS asks for vanilla HTML/CSS/JS, but this project is a TanStack Start + React + Tailwind v4 app (the supported Lovable stack). I'll implement the same spec faithfully in React with `localStorage` persistence — no backend, no database — so behavior, immutability, and data shape match the SRS exactly. If you actually need a single static `.html` file instead, tell me and I'll swap approach.
+Goal: move receipts and status history from `localStorage` to Supabase without changing UI/UX or breaking any Phase 1 feature. Add real auth + RLS. No Phase 3 features.
 
-### Scope
-Single-page app with a header toggle between Admin and Customer views. All data lives in `localStorage` under `warranty_flow_db` using the exact schema in the SRS.
+---
 
-### Routes / structure
-- `src/routes/index.tsx` — hosts the app shell (header + view toggle). Replaces the placeholder.
-- `src/routes/__root.tsx` — update `head()` with real title/description/OG ("Warranty Flow — Immutable Repair Receipts").
-- `src/lib/warranty-db.ts` — typed `localStorage` layer: `getDb`, `saveDb`, `addReceipt`, `updateStatus`, `findByTrackId`, `generateTrackId` (with collision check).
-- `src/components/warranty/Header.tsx` — logo + Admin/Customer toggle.
-- `src/components/warranty/AdminPanel.tsx` — composes the two admin sections.
-- `src/components/warranty/ReceiptForm.tsx` — creation form + validation + success modal with Copy-to-Clipboard.
-- `src/components/warranty/JobBoard.tsx` — sorted list of receipts (newest first), static immutable fields + status `<select>` that writes back.
-- `src/components/warranty/CustomerPanel.tsx` — search input + results.
-- `src/components/warranty/StatusStepper.tsx` — 5-stage timeline (horizontal desktop / vertical mobile), completed/active/future states, timestamps from `statusHistory`.
-- `src/components/warranty/TrackIdModal.tsx` — success modal.
+## 1. Database Schema
 
-Reuses existing shadcn primitives (Button, Input, Textarea, Select, Dialog, Card) already available in the project.
+Three tables in `public`, plus a roles table and enums.
 
-### Data & rules
-- Schema exactly as SRS §2.1.
-- `trackId` format `WF-{YYYY}-{4 A–Z0–9}`, regenerated on collision.
-- On create: set `createdAt`, `currentStatus = "Received"`, seed `statusHistory` with one `Received` entry.
-- On status change: update `currentStatus` and append `{ status, updatedAt: nowISO }` to `statusHistory`. Core fields never mutated (enforced by only exposing an `updateStatus(trackId, status)` API — no edit/delete surface).
-- Rendering: user-supplied strings rendered as React text children (equivalent to `.textContent`) — never `dangerouslySetInnerHTML`. XSS-safe.
-- Validation: name ≥3 chars, phone required, model required, serial required, issue ≥10 chars. Inline error styling under each field.
-- Customer search: case-insensitive, triggers on click or Enter. Not-found banner as specified.
+```text
+auth.users (Supabase managed)
+   │
+   ├── public.profiles           (1:1 with auth.users)
+   ├── public.user_roles         (role assignment; separate table)
+   │
+   └── public.receipts           (immutable core record)
+           │
+           ├── public.status_events   (append-only history, 5 stages)
+           └── (derived: warranty via delivered_at + warranty_days)
+```
 
-### UI / design
-- Tailwind v4 tokens in `src/styles.css`: primary `#2563eb` (indigo/cobalt), success `#10b981` (emerald), background `#f8fafc`. Register as `--color-primary`, `--color-success`, `--color-background` in `@theme inline`. No hardcoded hex in components.
-- Clean tech-professional aesthetic: rounded cards, subtle borders, focus rings, hover transitions, pulse animation on the active stepper stage.
-- Responsive: job board becomes a card grid on mobile; stepper flips vertical on mobile.
+### Enums
+- `app_role`: `admin`, `customer`
+- `repair_status`: `received`, `diagnosing`, `repairing`, `ready`, `delivered`
 
-### View switching
-Local React state in the index route toggles Admin vs Customer — no route change, per SRS "SPA via DOM toggle".
+### `profiles`
+- `id uuid pk references auth.users on delete cascade`
+- `full_name text`, `phone text`, `created_at timestamptz default now()`
 
-### Out of scope
-No auth, no backend, no Lovable Cloud, no edit/delete of receipts (by design).
+### `user_roles`
+- `id uuid pk`, `user_id uuid → auth.users`, `role app_role`, unique(user_id, role)
+- Read via `public.has_role(_user_id, _role)` security-definer function (avoids recursive RLS).
 
-### Verification
-After build: load `/`, create a receipt in Admin, copy the Track ID, switch to Customer, look it up, advance status from Admin, confirm stepper reflects new stage and timestamp on refresh.
+### `receipts` (immutable after insert)
+- `id uuid pk default gen_random_uuid()`
+- `track_id text unique not null` — existing `WF-YYYY-XXXX` format
+- `customer_name`, `customer_phone`, `customer_email` (nullable)
+- `device_type`, `device_model`, `issue_description`
+- `warranty_days int not null` (30/90/180/365)
+- `created_by uuid references auth.users` (the admin who created it)
+- `created_at timestamptz default now()`
+- `current_status repair_status default 'received'`
+- `delivered_at timestamptz` (set when status transitions to delivered; drives warranty countdown)
+- **Immutability enforced by a trigger**: block UPDATE of everything except `current_status` and `delivered_at`; block DELETE for non-service_role.
+
+### `status_events` (append-only)
+- `id uuid pk`, `receipt_id uuid → receipts on delete cascade`
+- `status repair_status not null`, `note text`, `created_at timestamptz default now()`
+- `created_by uuid references auth.users`
+- No UPDATE/DELETE policies → append-only by construction.
+
+---
+
+## 2. Authentication Flow
+
+Supabase Auth (email + password), using the integration-managed `_authenticated` gate.
+
+- **Sign up (customer)**: standard email/password. Trigger `handle_new_user()` creates a `profiles` row and assigns default role `customer` in `user_roles`.
+- **Admin (Workshop Owner)**: first admin is bootstrapped via SQL (insert into `user_roles`); afterwards admins can promote others via a server function using `supabaseAdmin`.
+- **Routes**
+  - `/auth` — public sign in / sign up (replaces the current passcode gate).
+  - `/_authenticated/admin` — admin panel (JobBoard + ReceiptForm). Gated by `has_role(uid, 'admin')` inside loaders/server fns.
+  - `/` — customer tracking stays public (track by ID + QR deep-link still works without login).
+  - `/_authenticated/my-repairs` — optional signed-in customer view (list of receipts matching the user's email/phone). UI unchanged, just an additional entry point.
+- Retire client-side SHA-256 passcode (`warranty-auth.ts`, `AdminAuthGate.tsx`) once admin login works.
+
+---
+
+## 3. RLS Policies
+
+RLS enabled on every table.
+
+### `receipts`
+- SELECT `anon`: allow `true` filtered by `track_id` only — public tracking must keep working via track ID. Implement as: policy `USING (true)` **plus** narrow the server publishable client to always `.eq('track_id', ?)` for anon. (Alternative: only expose a `get_receipt_by_track_id(text)` security-definer RPC to `anon` and revoke direct SELECT — safer, chosen default.)
+- SELECT `authenticated`:
+  - admin: `has_role(auth.uid(),'admin')`
+  - customer: `customer_email = auth.jwt()->>'email'`
+- INSERT `authenticated`: admin only.
+- UPDATE `authenticated`: admin only, and trigger restricts columns to `current_status`, `delivered_at`.
+- DELETE: none (service_role only).
+
+### `status_events`
+- SELECT: same visibility rules as parent receipt (via `EXISTS` subquery on receipts).
+- INSERT `authenticated`: admin only; trigger auto-sets `receipts.current_status` and `delivered_at` when status = `delivered`.
+- No UPDATE/DELETE policies.
+
+### `profiles`
+- SELECT/UPDATE: own row (`auth.uid() = id`), admins can read all.
+
+### `user_roles`
+- SELECT: own rows + admins.
+- INSERT/UPDATE/DELETE: admins only.
+
+Grants: `GRANT SELECT, INSERT, UPDATE ON public.receipts TO authenticated; GRANT ALL TO service_role; GRANT EXECUTE ON FUNCTION get_receipt_by_track_id TO anon, authenticated;` (and equivalent per table).
+
+---
+
+## 4. Migration Strategy (incremental, non-breaking)
+
+Six steps, each leaves the app fully functional.
+
+1. **Enable Lovable Cloud** (`supabase--enable`). Generates types + browser client.
+2. **Schema migration** — create enums, tables, triggers, `has_role`, `handle_new_user`, `get_receipt_by_track_id` RPC, grants, RLS policies.
+3. **Data layer abstraction** — introduce `src/lib/warranty-repo.ts` with the same function signatures the UI already uses (`listReceipts`, `getByTrackId`, `createReceipt`, `appendStatus`, `getWarrantyInfo`). Point it at Supabase. Keep `warranty-db.ts` as a thin fallback during cutover, then delete.
+4. **Auth swap** — add `/auth` route + `useAuth` hook + integration-managed `_authenticated` gate. Replace `AdminAuthGate` in `AdminPanel` with route-based gating. Customer panel unchanged.
+5. **Cutover per surface**, in order (verify after each):
+   - `CustomerPanel` tracking read → `get_receipt_by_track_id` RPC.
+   - QR deep-link hydration → same RPC (drop URL-fragment fallback once live).
+   - `JobBoard` list + filters → `receipts` select via `requireSupabaseAuth`.
+   - `ReceiptForm` create → server fn insert.
+   - `StatusStepper` status updates → server fn insert into `status_events`.
+6. **One-time local import** — a "Import legacy receipts" admin action reads existing `localStorage` `warranty_flow_db` and inserts via server fn (idempotent on `track_id`). After success, clear local DB.
+
+Server-side code uses `createServerFn` + `requireSupabaseAuth` per the TanStack Start integration; no Edge Functions.
+
+Rollback: each step is a single PR-sized change; if a surface breaks, revert that file — schema stays.
+
+---
+
+## 5. Technical Details
+
+- New files: `src/lib/warranty-repo.ts`, `src/lib/warranty-repo.functions.ts` (server fns), `src/hooks/use-auth.ts`, `src/routes/auth.tsx`, `src/routes/_authenticated/admin.tsx`, migration SQL.
+- Removed after cutover: `warranty-auth.ts`, `AdminAuthGate.tsx`, `use-warranty-db.ts`, `warranty-db.ts` writes (keep read shim until step 6 done).
+- Track-ID collision check moves from client loop to a unique constraint + retry on `23505`.
+- Warranty state (`pending/active/expired`) stays a pure derived helper — no schema change.
+- Print, QR, invoice generator, SEO routes: untouched.
+
+---
+
+## 6. Out of Scope (Phase 3)
+
+Notifications, analytics, multi-tenant workshops, photo uploads, warranty-claim workflow, public REST APIs, realtime subscriptions. Not built in this phase.
+
+---
+
+## 7. Deliverable
+
+After implementation: a migration progress report listing schema created, policies applied, files added/removed, and a checklist of each Phase 1 feature verified against Supabase.
+
+Approve this plan and I'll start with step 1 (enable Lovable Cloud) and the schema migration.

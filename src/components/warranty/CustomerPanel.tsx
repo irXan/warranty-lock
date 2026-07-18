@@ -10,8 +10,8 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { findByTrackId, getWarrantyInfo, type Receipt } from "@/lib/warranty-db";
-import { useReceipts } from "@/hooks/use-warranty-db";
+import { getWarrantyInfo, type Receipt } from "@/lib/warranty-db";
+import { findByTrackId } from "@/lib/warranty-repo";
 import { StatusStepper } from "./StatusStepper";
 import { printReceipt } from "@/lib/print-receipt";
 import { decodeSharedReceipt } from "@/lib/receipt-share";
@@ -25,14 +25,18 @@ export function CustomerPanel() {
   const [searchedId, setSearchedId] = useState<string | null>(null);
 
   // Live-update the shown receipt if admin advances status in another tab / view.
-  const receipts = useReceipts();
-  const liveResult =
-    searchedId != null ? receipts.find((r) => r.trackId === searchedId) ?? null : result;
+  const liveResult = result;
+  void searchedId;
 
-  const runSearch = (raw: string) => {
+  const runSearch = async (raw: string) => {
     const q = raw.trim();
     if (!q) return;
-    const found = findByTrackId(q);
+    let found: Receipt | null = null;
+    try {
+      found = await findByTrackId(q);
+    } catch {
+      found = null;
+    }
     // Cross-device fallback: if the QR/deep link included a payload in the
     // URL fragment, hydrate from it so scanning on another phone works.
     const shared = readSharedFromHash();
@@ -49,15 +53,13 @@ export function CustomerPanel() {
       return;
     }
     setResult(record);
-    // Only track by ID when it lives in this device's DB — shared receipts
-    // are one-shot renders and shouldn't attempt live subscription.
     setSearchedId(found ? record.trackId : null);
     setError(null);
   };
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    runSearch(query);
+    void runSearch(query);
   };
 
   // Auto-lookup when arriving via QR code URL: /?track=WF-YYYY-XXXX
@@ -68,7 +70,7 @@ export function CustomerPanel() {
     if (t) {
       const upper = t.toUpperCase();
       setQuery(upper);
-      runSearch(upper);
+      void runSearch(upper);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

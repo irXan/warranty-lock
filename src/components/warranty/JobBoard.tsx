@@ -19,14 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useReceipts } from "@/hooks/use-warranty-db";
 import {
   STATUS_STAGES,
-  updateStatus,
   getWarrantyInfo,
   type Receipt,
   type StatusName,
 } from "@/lib/warranty-db";
+import { updateStatus, receiptsQueryKey } from "@/lib/warranty-repo";
 import { printReceipt } from "@/lib/print-receipt";
 import { EmptyState } from "./EmptyState";
 
@@ -41,7 +42,7 @@ function fmtDate(iso: string): string {
 }
 
 export function JobBoard() {
-  const receipts = useReceipts();
+  const { data: receipts = [], isLoading } = useReceipts();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -92,11 +93,15 @@ export function JobBoard() {
       )}
 
       {receipts.length === 0 ? (
+        isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading receipts…</div>
+        ) : (
         <EmptyState
           icon={Inbox}
           title="No receipts yet"
           description="Use the form above to create your first immutable repair receipt — it will land here instantly."
         />
+        )
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={SearchX}
@@ -115,6 +120,15 @@ export function JobBoard() {
 }
 
 function JobCard({ receipt }: { receipt: Receipt }) {
+  const qc = useQueryClient();
+  const mut = useMutation({
+    mutationFn: ({ status }: { status: StatusName }) => updateStatus(receipt.trackId, status),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: receiptsQueryKey });
+      toast.success(`Status updated to “${vars.status}”`, { description: receipt.trackId });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Update failed"),
+  });
   return (
     <li className="rounded-xl border border-border bg-background p-4 transition-colors hover:border-primary/40">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -152,11 +166,9 @@ function JobCard({ receipt }: { receipt: Receipt }) {
             onValueChange={(v) => {
               const next = v as StatusName;
               if (next === receipt.currentStatus) return;
-              updateStatus(receipt.trackId, next);
-              toast.success(`Status updated to “${next}”`, {
-                description: receipt.trackId,
-              });
+              mut.mutate({ status: next });
             }}
+            disabled={mut.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue />

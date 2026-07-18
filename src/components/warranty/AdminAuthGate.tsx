@@ -1,43 +1,37 @@
-import { useEffect, useState } from "react";
 import { Lock, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { hasPasscode, isAuthed, setPasscode, signOut, verifyPasscode } from "@/lib/warranty-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Props {
   children: React.ReactNode;
 }
 
 export function AdminAuthGate({ children }: Props) {
-  const [ready, setReady] = useState(false);
-  const [authed, setAuthed] = useState(false);
-  const [firstRun, setFirstRun] = useState(false);
-  const [pass, setPass] = useState("");
-  const [confirmPass, setConfirmPass] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { ready, user, isAdmin } = useAuth();
+  if (!ready) {
+    return (
+      <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    setFirstRun(!hasPasscode());
-    setAuthed(isAuthed());
-    setReady(true);
-  }, []);
-
-  if (!ready) return null;
-
-  if (authed) {
+  if (user && isAdmin) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          <span className="text-xs text-muted-foreground">
+            Signed in as <span className="font-medium text-foreground">{user.email}</span>
+          </span>
           <Button
             variant="ghost"
             size="sm"
             className="gap-2 text-muted-foreground"
-            onClick={() => {
-              signOut();
-              setAuthed(false);
+            onClick={async () => {
+              await supabase.auth.signOut();
               toast.success("Signed out");
             }}
           >
@@ -50,86 +44,34 @@ export function AdminAuthGate({ children }: Props) {
     );
   }
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (firstRun) {
-      if (pass.length < 4) return setError("Choose at least 4 characters.");
-      if (pass !== confirmPass) return setError("Passcodes do not match.");
-      setBusy(true);
-      await setPasscode(pass);
-      setBusy(false);
-      setAuthed(true);
-      toast.success("Passcode created — you're signed in");
-      return;
-    }
-    setBusy(true);
-    const ok = await verifyPasscode(pass);
-    setBusy(false);
-    if (!ok) {
-      setError("Incorrect passcode.");
-      toast.error("Incorrect passcode");
-      return;
-    }
-    setAuthed(true);
-    toast.success("Signed in");
-  };
-
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Lock className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {firstRun ? "Set up admin passcode" : "Admin sign-in"}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {firstRun
-              ? "Choose a passcode to protect the workshop panel on this device."
-              : "Enter your workshop passcode to access receipts."}
-          </p>
-        </div>
+    <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Lock className="h-5 w-5" />
       </div>
-
-      <form onSubmit={submit} className="mt-5 space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="pass" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Passcode
-          </Label>
-          <Input
-            id="pass"
-            type="password"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            autoFocus
-            autoComplete={firstRun ? "new-password" : "current-password"}
-          />
-        </div>
-        {firstRun && (
-          <div className="space-y-1.5">
-            <Label htmlFor="pass2" className="text-xs uppercase tracking-wide text-muted-foreground">
-              Confirm passcode
-            </Label>
-            <Input
-              id="pass2"
-              type="password"
-              value={confirmPass}
-              onChange={(e) => setConfirmPass(e.target.value)}
-              autoComplete="new-password"
-            />
-          </div>
-        )}
-        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={busy}>
-          {firstRun ? "Create passcode" : "Sign in"}
+      <h2 className="mt-3 text-lg font-semibold text-foreground">Admin sign-in required</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {user
+          ? "You're signed in but don't have workshop admin access yet. An existing admin can grant your account the admin role."
+          : "Sign in with your workshop account to access receipts."}
+      </p>
+      {!user && (
+        <Button asChild className="mt-4 w-full">
+          <Link to="/auth">Go to sign in</Link>
         </Button>
-        <p className="text-[11px] text-muted-foreground">
-          Passcode is stored on this device only. Migrating to Lovable Cloud will unlock proper
-          multi-device accounts.
-        </p>
-      </form>
+      )}
+      {user && (
+        <Button
+          variant="outline"
+          className="mt-4 w-full"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            toast.success("Signed out");
+          }}
+        >
+          Sign out
+        </Button>
+      )}
     </div>
   );
 }

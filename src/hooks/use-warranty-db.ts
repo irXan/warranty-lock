@@ -1,22 +1,13 @@
-import { useEffect, useState } from "react";
-import { listReceipts, type Receipt } from "@/lib/warranty-db";
+import { useQuery } from "@tanstack/react-query";
+import { listReceipts, receiptsQueryKey } from "@/lib/warranty-repo";
+import type { Receipt } from "@/lib/warranty-db";
 
-export function useReceipts(): Receipt[] {
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-
-  useEffect(() => {
-    const sync = () => setReceipts(listReceipts());
-    sync();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "warranty_flow_db" || e.key === null) sync();
-    };
-    window.addEventListener("warranty_flow_db:change", sync);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("warranty_flow_db:change", sync);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-
-  return receipts;
+/** Admin-only reactive list of receipts (RLS enforces role server-side). */
+export function useReceipts(options: { enabled?: boolean } = {}) {
+  return useQuery<Receipt[]>({
+    queryKey: receiptsQueryKey,
+    queryFn: listReceipts,
+    enabled: options.enabled ?? true,
+    staleTime: 15_000,
+  });
 }
