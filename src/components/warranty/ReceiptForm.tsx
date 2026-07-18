@@ -13,12 +13,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  addReceipt,
   DEFAULT_WARRANTY_DAYS,
   WARRANTY_OPTIONS,
   type NewReceiptInput,
+  type Receipt,
 } from "@/lib/warranty-db";
+import { addReceipt, receiptsQueryKey } from "@/lib/warranty-repo";
 import { TrackIdModal } from "./TrackIdModal";
 
 type Errors = Partial<Record<keyof NewReceiptInput, string>>;
@@ -46,7 +48,23 @@ function validate(v: NewReceiptInput): Errors {
 export function ReceiptForm() {
   const [values, setValues] = useState<NewReceiptInput>(initial);
   const [errors, setErrors] = useState<Errors>({});
-  const [newTrackId, setNewTrackId] = useState<string | null>(null);
+  const [newReceipt, setNewReceipt] = useState<Receipt | null>(null);
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: addReceipt,
+    onSuccess: (receipt) => {
+      setValues(initial);
+      setErrors({});
+      setNewReceipt(receipt);
+      void qc.invalidateQueries({ queryKey: receiptsQueryKey });
+      toast.success("Immutable receipt generated", {
+        description: `Track ID ${receipt.trackId} is now locked.`,
+      });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Could not create receipt");
+    },
+  });
 
   const update = <K extends keyof NewReceiptInput>(k: K, v: NewReceiptInput[K]) => {
     setValues((prev) => ({ ...prev, [k]: v }));
@@ -69,13 +87,7 @@ export function ReceiptForm() {
       toast.error("Please fix the highlighted fields");
       return;
     }
-    const receipt = addReceipt(trimmed);
-    setValues(initial);
-    setErrors({});
-    setNewTrackId(receipt.trackId);
-    toast.success("Immutable receipt generated", {
-      description: `Track ID ${receipt.trackId} is now locked.`,
-    });
+    mutation.mutate(trimmed);
   };
 
   return (
@@ -182,14 +194,14 @@ export function ReceiptForm() {
           <p className="text-xs text-muted-foreground">
             A unique Track ID is minted on submit and locked into local storage.
           </p>
-          <Button type="submit" size="lg" className="gap-2">
+          <Button type="submit" size="lg" className="gap-2" disabled={mutation.isPending}>
             <FileLock2 className="h-4 w-4" />
-            Generate immutable receipt
+            {mutation.isPending ? "Generating…" : "Generate immutable receipt"}
           </Button>
         </div>
       </form>
 
-      <TrackIdModal trackId={newTrackId} onClose={() => setNewTrackId(null)} />
+      <TrackIdModal receipt={newReceipt} onClose={() => setNewReceipt(null)} />
     </div>
   );
 }
