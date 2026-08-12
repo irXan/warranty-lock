@@ -50,6 +50,7 @@ export type Database = {
           serial_number: string
           track_id: string
           warranty_days: number
+          workshop_id: string
         }
         Insert: {
           created_at?: string
@@ -65,6 +66,7 @@ export type Database = {
           serial_number: string
           track_id: string
           warranty_days?: number
+          workshop_id: string
         }
         Update: {
           created_at?: string
@@ -80,8 +82,17 @@ export type Database = {
           serial_number?: string
           track_id?: string
           warranty_days?: number
+          workshop_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "receipts_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       status_events: {
         Row: {
@@ -139,17 +150,94 @@ export type Database = {
         }
         Relationships: []
       }
+      workshop_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["workshop_role"]
+          user_id: string
+          workshop_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["workshop_role"]
+          user_id: string
+          workshop_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["workshop_role"]
+          user_id?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_members_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshops: {
+        Row: {
+          address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          name: string
+          owner_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          owner_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      current_workshop_id: { Args: { _user_id: string }; Returns: string }
       get_receipt_by_track_id: { Args: { _track_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_workshop_member: {
+        Args: { _user_id: string; _workshop_id: string }
+        Returns: boolean
+      }
+      is_workshop_owner: {
+        Args: { _user_id: string; _workshop_id: string }
         Returns: boolean
       }
     }
@@ -161,6 +249,7 @@ export type Database = {
         | "In Repair"
         | "Ready for Pickup"
         | "Delivered"
+      workshop_role: "owner" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -296,6 +385,7 @@ export const Constants = {
         "Ready for Pickup",
         "Delivered",
       ],
+      workshop_role: ["owner", "staff"],
     },
   },
 } as const
