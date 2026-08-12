@@ -44,6 +44,12 @@ function rowToReceipt(row: ReceiptRow, history: StatusEntry[]): Receipt {
 }
 
 /** Admin-only: list every receipt (RLS enforces role on the server). */
+export async function getCurrentWorkshopId(userId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("current_workshop_id", { _user_id: userId });
+  if (error) throw error;
+  return (data as string | null) ?? null;
+}
+
 export async function listReceipts(): Promise<Receipt[]> {
   const { data: rows, error } = await supabase
     .from("receipts")
