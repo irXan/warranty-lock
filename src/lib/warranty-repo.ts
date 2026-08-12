@@ -44,6 +44,12 @@ function rowToReceipt(row: ReceiptRow, history: StatusEntry[]): Receipt {
 }
 
 /** Admin-only: list every receipt (RLS enforces role on the server). */
+export async function getCurrentWorkshopId(userId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("current_workshop_id", { _user_id: userId });
+  if (error) throw error;
+  return (data as string | null) ?? null;
+}
+
 export async function listReceipts(): Promise<Receipt[]> {
   const { data: rows, error } = await supabase
     .from("receipts")
@@ -79,6 +85,11 @@ export async function addReceipt(input: NewReceiptInput): Promise<Receipt> {
   const userId = authData.user?.id;
   if (!userId) throw new Error("You must be signed in to create receipts.");
 
+  const workshopId = await getCurrentWorkshopId(userId);
+  if (!workshopId) {
+    throw new Error("Your account isn't linked to a workshop yet. Ask an owner to add you.");
+  }
+
   // Retry once if we hit the unique-track_id collision (extremely rare).
   for (let attempt = 0; attempt < 3; attempt++) {
     const trackId = generateTrackId();
@@ -86,6 +97,7 @@ export async function addReceipt(input: NewReceiptInput): Promise<Receipt> {
       .from("receipts")
       .insert({
         track_id: trackId,
+        workshop_id: workshopId,
         customer_name: input.customerName,
         customer_phone: input.customerPhone,
         device_model: input.deviceModel,
