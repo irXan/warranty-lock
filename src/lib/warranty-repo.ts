@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { lookupReceiptByTrackId } from "./tracking.functions";
 import {
   DEFAULT_WARRANTY_DAYS,
   generateTrackId,
@@ -43,11 +44,17 @@ function rowToReceipt(row: ReceiptRow, history: StatusEntry[]): Receipt {
   };
 }
 
-/** Admin-only: list every receipt (RLS enforces role on the server). */
 export async function getCurrentWorkshopId(userId: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("current_workshop_id", { _user_id: userId });
+  const { data, error } = await supabase
+    .from("workshop_members")
+    .select("workshop_id, role, created_at")
+    .eq("user_id", userId)
+    .order("role", { ascending: true })
+    .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data as string | null) ?? null;
+  const rows = data ?? [];
+  const owner = rows.find((r) => r.role === "owner");
+  return (owner ?? rows[0])?.workshop_id ?? null;
 }
 
 export async function listReceipts(): Promise<Receipt[]> {
@@ -164,14 +171,11 @@ type PublicReceiptPayload = {
   status_history: Array<{ status: StatusName; updated_at: string }>;
 };
 
-/** Public lookup by Track ID via SECURITY DEFINER RPC. Works signed-out. */
+/** Public lookup by Track ID via a server function. Works signed-out. */
 export async function findByTrackId(trackId: string): Promise<Receipt | null> {
   const trimmed = trackId.trim();
   if (!trimmed) return null;
-  const { data, error } = await supabase.rpc("get_receipt_by_track_id", {
-    _track_id: trimmed,
-  });
-  if (error) throw error;
+  const data = await lookupReceiptByTrackId({ data: { trackId: trimmed } });
   if (!data) return null;
   const p = data as unknown as PublicReceiptPayload;
   return {
