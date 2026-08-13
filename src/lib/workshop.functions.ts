@@ -62,13 +62,22 @@ export const grantWorkshopAdmin = createServerFn({ method: "POST" })
     if (!membership) throw new Error("Only the workshop owner can grant admin access.");
 
     const email = data.email.trim().toLowerCase();
-    const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (listErr) throw listErr;
-    const target = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
-    if (!target) throw new Error("No account found with that email. Ask them to sign up first.");
+    let target: { id: string } | undefined;
+    for (let page = 1; page <= 20 && !target; page++) {
+      const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (listErr) throw listErr;
+      target = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (list.users.length < 200) break;
+    }
+    if (!target) {
+      return {
+        granted: null as string | null,
+        error: `No account exists for ${email}. Ask them to create an account first, then grant access.`,
+      };
+    }
 
     const { error: insErr } = await supabaseAdmin
       .from("workshop_members")
@@ -83,7 +92,7 @@ export const grantWorkshopAdmin = createServerFn({ method: "POST" })
       .upsert({ user_id: target.id, role: "admin" }, { onConflict: "user_id,role" });
     if (roleErr) throw roleErr;
 
-    return { granted: email };
+    return { granted: email, error: null as string | null };
   });
 
 const legacyReceiptSchema = z.object({

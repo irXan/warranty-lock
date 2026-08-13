@@ -53,8 +53,12 @@ export function WorkshopTools() {
     setGranting(true);
     try {
       const res = await grant({ data: { email } });
-      toast.success(`Admin access granted to ${res.granted}`);
-      setEmail("");
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success(`Admin access granted to ${res.granted}`);
+        setEmail("");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not grant admin access");
     } finally {
