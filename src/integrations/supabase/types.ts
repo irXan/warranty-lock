@@ -223,23 +223,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      current_workshop_id: { Args: { _user_id: string }; Returns: string }
-      get_receipt_by_track_id: { Args: { _track_id: string }; Returns: Json }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_workshop_member: {
-        Args: { _user_id: string; _workshop_id: string }
-        Returns: boolean
-      }
-      is_workshop_owner: {
-        Args: { _user_id: string; _workshop_id: string }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       app_role: "admin" | "customer"
