@@ -1,9 +1,12 @@
-import { Lock, LogOut } from "lucide-react";
+import { useState } from "react";
+import { Lock, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { claimWorkshopOwnership } from "@/lib/workshop.functions";
 
 interface Props {
   children: React.ReactNode;
@@ -11,6 +14,9 @@ interface Props {
 
 export function AdminAuthGate({ children }: Props) {
   const { ready, user, isAdmin } = useAuth();
+  const claim = useServerFn(claimWorkshopOwnership);
+  const [claiming, setClaiming] = useState(false);
+
   if (!ready) {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
@@ -61,16 +67,42 @@ export function AdminAuthGate({ children }: Props) {
         </Button>
       )}
       {user && (
-        <Button
-          variant="outline"
-          className="mt-4 w-full"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            toast.success("Signed out");
-          }}
-        >
-          Sign out
-        </Button>
+        <div className="mt-4 space-y-2">
+          <Button
+            className="w-full gap-2"
+            disabled={claiming}
+            onClick={async () => {
+              setClaiming(true);
+              try {
+                await claim({});
+                toast.success("You're now the workshop owner — reloading…");
+                window.location.reload();
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "Could not claim workshop ownership",
+                );
+              } finally {
+                setClaiming(false);
+              }
+            }}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            {claiming ? "Setting up…" : "Claim workshop ownership"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            Available only until the first owner is set up.
+          </p>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              toast.success("Signed out");
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
       )}
     </div>
   );
