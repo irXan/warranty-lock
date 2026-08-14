@@ -165,7 +165,7 @@ export const grantWorkshopAdmin = createServerFn({ method: "POST" })
     if (!target) {
       return {
         granted: null as string | null,
-        error: `No account exists for ${email}. Ask them to create an account first, then grant access.`,
+        error: `No account exists for ${email}. Ask them to register with this email first, then grant access.`,
       };
     }
 
