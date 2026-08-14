@@ -4,6 +4,96 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const DEFAULT_SLUG = "warranty-flow";
 
+/** Any signed-in user: reports whether the workshop still needs its first owner. */
+export const getWorkshopBootstrapState = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { count, error } = await supabaseAdmin
+      .from("workshop_members")
+      .select("id", { count: "exact", head: true });
+    if (error) throw error;
+    return { hasOwner: (count ?? 0) > 0 };
+  });
+
+/** Members of the caller's workshop can see the team roster. */
+export const listWorkshopMembers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: mine, error: mineErr } = await supabaseAdmin
+      .from("workshop_members")
+      .select("workshop_id, role")
+      .eq("user_id", context.userId);
+    if (mineErr) throw mineErr;
+    const own = (mine ?? []).find((m) => m.role === "owner") ?? (mine ?? [])[0];
+    if (!own) return { role: null as "owner" | "staff" | null, members: [] };
+
+    const { data: rows, error: rowsErr } = await supabaseAdmin
+      .from("workshop_members")
+      .select("user_id, role, created_at")
+      .eq("workshop_id", own.workshop_id)
+      .order("created_at", { ascending: true });
+    if (rowsErr) throw rowsErr;
+
+    const members = await Promise.all(
+      (rows ?? []).map(async (r) => {
+        const { data: u } = await supabaseAdmin.auth.admin.getUserById(r.user_id);
+        return {
+          userId: r.user_id,
+          email: u?.user?.email ?? "(unknown)",
+          role: r.role as "owner" | "staff",
+          createdAt: r.created_at,
+        };
+      }),
+    );
+
+    return { role: own.role as "owner" | "staff", members };
+  });
+
+/** Owner-only: remove a staff member's workshop access and admin role. */
+export const revokeWorkshopStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: membership, error: memErr } = await supabaseAdmin
+      .from("workshop_members")
+      .select("workshop_id")
+      .eq("user_id", context.userId)
+      .eq("role", "owner")
+      .maybeSingle();
+    if (memErr) throw memErr;
+    if (!membership) throw new Error("Only the workshop owner can revoke access.");
+    if (data.userId === context.userId) throw new Error("You can't revoke your own access.");
+
+    const { data: target, error: tErr } = await supabaseAdmin
+      .from("workshop_members")
+      .select("id, role")
+      .eq("workshop_id", membership.workshop_id)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (tErr) throw tErr;
+    if (!target) throw new Error("That person isn't a member of your workshop.");
+    if (target.role === "owner") throw new Error("The workshop owner can't be removed.");
+
+    const { error: delErr } = await supabaseAdmin
+      .from("workshop_members")
+      .delete()
+      .eq("id", target.id);
+    if (delErr) throw delErr;
+
+    await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.userId)
+      .eq("role", "admin");
+
+    return { revoked: data.userId };
+  });
+
 /**
  * One-time bootstrap: if no workshop member exists yet, the caller becomes the
  * owner of the default workshop and is granted the admin role.
@@ -75,7 +165,7 @@ export const grantWorkshopAdmin = createServerFn({ method: "POST" })
     if (!target) {
       return {
         granted: null as string | null,
-        error: `No account exists for ${email}. Ask them to create an account first, then grant access.`,
+        error: `No account exists for ${email}. Ask them to register with this email first, then grant access.`,
       };
     }
 

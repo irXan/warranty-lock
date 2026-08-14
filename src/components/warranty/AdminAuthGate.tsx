@@ -3,10 +3,11 @@ import { Lock, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { claimWorkshopOwnership } from "@/lib/workshop.functions";
+import { claimWorkshopOwnership, getWorkshopBootstrapState } from "@/lib/workshop.functions";
 
 interface Props {
   children: React.ReactNode;
@@ -15,7 +16,14 @@ interface Props {
 export function AdminAuthGate({ children }: Props) {
   const { ready, user, isAdmin } = useAuth();
   const claim = useServerFn(claimWorkshopOwnership);
+  const bootstrapFn = useServerFn(getWorkshopBootstrapState);
   const [claiming, setClaiming] = useState(false);
+  const bootstrap = useQuery({
+    queryKey: ["workshop-bootstrap"],
+    queryFn: () => bootstrapFn({}),
+    enabled: !!user && !isAdmin,
+  });
+  const canClaim = bootstrap.data?.hasOwner === false;
 
   if (!ready) {
     return (
@@ -66,7 +74,7 @@ export function AdminAuthGate({ children }: Props) {
           <Link to="/auth">Go to sign in</Link>
         </Button>
       )}
-      {user && (
+      {user && canClaim && (
         <div className="mt-4 space-y-2">
           <Button
             className="w-full gap-2"
@@ -92,17 +100,19 @@ export function AdminAuthGate({ children }: Props) {
           <p className="text-[11px] text-muted-foreground">
             Available only until the first owner is set up.
           </p>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              toast.success("Signed out");
-            }}
-          >
-            Sign out
-          </Button>
         </div>
+      )}
+      {user && (
+        <Button
+          variant="outline"
+          className="mt-2 w-full"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            toast.success("Signed out");
+          }}
+        >
+          Sign out
+        </Button>
       )}
     </div>
   );

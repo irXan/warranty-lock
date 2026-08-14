@@ -7,19 +7,27 @@ export interface AuthState {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
+  workshopId: string | null;
+  workshopRole: "owner" | "staff" | null;
 }
 
 export function useAuth(): AuthState {
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [workshopId, setWorkshopId] = useState<string | null>(null);
+  const [workshopRole, setWorkshopRole] = useState<"owner" | "staff" | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
     const loadRole = async (userId: string | undefined) => {
       if (!userId) {
-        if (mounted) setIsAdmin(false);
+        if (mounted) {
+          setIsAdmin(false);
+          setWorkshopId(null);
+          setWorkshopRole(null);
+        }
         return;
       }
       const { data } = await supabase
@@ -29,6 +37,18 @@ export function useAuth(): AuthState {
         .eq("role", "admin")
         .maybeSingle();
       if (mounted) setIsAdmin(!!data);
+
+      const { data: memberships } = await supabase
+        .from("workshop_members")
+        .select("workshop_id, role, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true });
+      const rows = memberships ?? [];
+      const own = rows.find((r) => r.role === "owner") ?? rows[0];
+      if (mounted) {
+        setWorkshopId(own?.workshop_id ?? null);
+        setWorkshopRole((own?.role as "owner" | "staff" | undefined) ?? null);
+      }
     };
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -52,5 +72,5 @@ export function useAuth(): AuthState {
     };
   }, []);
 
-  return { ready, session, user: session?.user ?? null, isAdmin };
+  return { ready, session, user: session?.user ?? null, isAdmin, workshopId, workshopRole };
 }
