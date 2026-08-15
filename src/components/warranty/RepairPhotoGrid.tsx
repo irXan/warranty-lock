@@ -119,7 +119,6 @@ export function RepairPhotoGrid({
               Delete photo
             </Button>
           </DialogFooter>
-        </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
