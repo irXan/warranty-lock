@@ -22,6 +22,9 @@ export interface StatusEntry {
 }
 
 export interface Receipt {
+  /** Database id — present for workshop-side records, absent for shared/QR payloads. */
+  id?: string;
+  workshopId?: string;
   trackId: string;
   customerName: string;
   customerPhone: string;

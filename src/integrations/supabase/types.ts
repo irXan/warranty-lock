@@ -94,6 +94,54 @@ export type Database = {
           },
         ]
       }
+      repair_photos: {
+        Row: {
+          caption: string | null
+          category: Database["public"]["Enums"]["repair_photo_category"]
+          created_at: string
+          id: string
+          receipt_id: string
+          storage_path: string
+          uploaded_by: string | null
+          workshop_id: string
+        }
+        Insert: {
+          caption?: string | null
+          category?: Database["public"]["Enums"]["repair_photo_category"]
+          created_at?: string
+          id?: string
+          receipt_id: string
+          storage_path: string
+          uploaded_by?: string | null
+          workshop_id: string
+        }
+        Update: {
+          caption?: string | null
+          category?: Database["public"]["Enums"]["repair_photo_category"]
+          created_at?: string
+          id?: string
+          receipt_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_photos_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_photos_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       status_events: {
         Row: {
           created_at: string
@@ -227,6 +275,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "customer"
+      repair_photo_category: "before" | "during" | "after"
       repair_status:
         | "Received"
         | "Diagnosing"
@@ -362,6 +411,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "customer"],
+      repair_photo_category: ["before", "during", "after"],
       repair_status: [
         "Received",
         "Diagnosing",
