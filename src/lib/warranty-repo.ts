@@ -11,6 +11,7 @@ import {
 
 type ReceiptRow = {
   id: string;
+  workshop_id?: string;
   track_id: string;
   customer_name: string;
   customer_phone: string;
@@ -31,6 +32,8 @@ type StatusEventRow = {
 
 function rowToReceipt(row: ReceiptRow, history: StatusEntry[]): Receipt {
   return {
+    id: row.id,
+    workshopId: row.workshop_id,
     trackId: row.track_id,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
@@ -61,7 +64,7 @@ export async function listReceipts(): Promise<Receipt[]> {
   const { data: rows, error } = await supabase
     .from("receipts")
     .select(
-      "id, track_id, customer_name, customer_phone, device_model, serial_number, issue_description, warranty_days, current_status, delivered_at, created_at",
+      "id, workshop_id, track_id, customer_name, customer_phone, device_model, serial_number, issue_description, warranty_days, current_status, delivered_at, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -114,7 +117,7 @@ export async function addReceipt(input: NewReceiptInput): Promise<Receipt> {
         created_by: userId,
       })
       .select(
-        "id, track_id, customer_name, customer_phone, device_model, serial_number, issue_description, warranty_days, current_status, delivered_at, created_at",
+        "id, workshop_id, track_id, customer_name, customer_phone, device_model, serial_number, issue_description, warranty_days, current_status, delivered_at, created_at",
       )
       .single();
     if (error) {
