@@ -16,6 +16,7 @@ import { StatusStepper } from "./StatusStepper";
 import { printReceipt } from "@/lib/print-receipt";
 import { decodeSharedReceipt } from "@/lib/receipt-share";
 import { ImmutableBadge } from "./ImmutableBadge";
+import { CustomerRepairPhotos } from "./CustomerRepairPhotos";
 import { cn } from "@/lib/utils";
 
 export function CustomerPanel() {
@@ -185,6 +186,8 @@ function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
       </dl>
 
       <WarrantyCard receipt={receipt} />
+
+      <CustomerRepairPhotos trackId={receipt.trackId} />
 
       <div className="pt-2">
         <h3 className="mb-4 text-sm font-semibold text-foreground">Progress</h3>

@@ -30,6 +30,7 @@ import {
 import { updateStatus, receiptsQueryKey } from "@/lib/warranty-repo";
 import { printReceipt } from "@/lib/print-receipt";
 import { EmptyState } from "./EmptyState";
+import { RepairPhotos } from "./RepairPhotos";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -195,6 +196,10 @@ function JobCard({ receipt }: { receipt: Receipt }) {
           </Button>
         </div>
       </div>
+
+      {receipt.id && receipt.workshopId && (
+        <RepairPhotos receiptId={receipt.id} workshopId={receipt.workshopId} />
+      )}
     </li>
   );
 }
