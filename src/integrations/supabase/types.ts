@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      claim_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip_hash: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -34,6 +55,41 @@ export type Database = {
           phone?: string | null
         }
         Relationships: []
+      }
+      receipt_claims: {
+        Row: {
+          claimed_at: string
+          id: string
+          receipt_id: string
+          released_at: string | null
+          status: Database["public"]["Enums"]["claim_status"]
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          receipt_id: string
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          receipt_id?: string
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_claims_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       receipts: {
         Row: {
@@ -275,6 +331,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "customer"
+      claim_status: "active" | "released"
       repair_photo_category: "before" | "during" | "after"
       repair_status:
         | "Received"
@@ -411,6 +468,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "customer"],
+      claim_status: ["active", "released"],
       repair_photo_category: ["before", "during", "after"],
       repair_status: [
         "Received",
