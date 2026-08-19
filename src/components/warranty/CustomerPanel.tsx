@@ -17,9 +17,14 @@ import { printReceipt } from "@/lib/print-receipt";
 import { decodeSharedReceipt } from "@/lib/receipt-share";
 import { ImmutableBadge } from "./ImmutableBadge";
 import { CustomerRepairPhotos } from "./CustomerRepairPhotos";
+import { MyRepairs } from "./MyRepairs";
+import { ClaimRepairButton } from "./ClaimRepairButton";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 export function CustomerPanel() {
+  const { user, isAdmin } = useAuth();
+  const showMyRepairs = !!user && !isAdmin;
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<Receipt | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +121,16 @@ export function CustomerPanel() {
         </div>
       </div>
 
-      {liveResult && <ReceiptDashboard receipt={liveResult} />}
+      {showMyRepairs && (
+        <MyRepairs
+          onOpen={(id) => {
+            setQuery(id);
+            void runSearch(id);
+          }}
+        />
+      )}
+
+      {liveResult && <ReceiptDashboard receipt={liveResult} signedIn={!!user} />}
     </div>
   );
 }
@@ -130,7 +144,7 @@ function readSharedFromHash(): Receipt | null {
   return decodeSharedReceipt(match[1]);
 }
 
-function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
+function ReceiptDashboard({ receipt, signedIn }: { receipt: Receipt; signedIn: boolean }) {
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
@@ -145,10 +159,11 @@ function ReceiptDashboard({ receipt }: { receipt: Receipt }) {
             <ImmutableBadge variant="compact" />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             {receipt.currentStatus}
           </div>
+          {signedIn && <ClaimRepairButton trackId={receipt.trackId} />}
           <Button
             variant="outline"
             size="sm"
