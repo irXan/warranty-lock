@@ -24,10 +24,26 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Preserve a Track ID the visitor arrived with (/auth?track=...) so we can
+  // return them to tracking after sign-in, where they can claim the repair.
+  const pendingTrack =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("track")
+      : null;
+
+  const goHome = () => {
+    if (pendingTrack) {
+      window.location.assign(`/?track=${encodeURIComponent(pendingTrack.toUpperCase())}`);
+      return;
+    }
+    navigate({ to: "/" });
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+      if (data.session) goHome();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -50,7 +66,7 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Signed in");
       }
-      navigate({ to: "/" });
+      goHome();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
     } finally {
