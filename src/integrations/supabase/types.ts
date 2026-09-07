@@ -254,6 +254,89 @@ export type Database = {
         }
         Relationships: []
       }
+      warranty_claim_events: {
+        Row: {
+          actor_id: string | null
+          claim_id: string
+          created_at: string
+          id: string
+          note: string | null
+          status: Database["public"]["Enums"]["warranty_claim_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          claim_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          status: Database["public"]["Enums"]["warranty_claim_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          claim_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          status?: Database["public"]["Enums"]["warranty_claim_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_events_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claims: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          receipt_id: string
+          status: Database["public"]["Enums"]["warranty_claim_status"]
+          updated_at: string
+          user_id: string
+          workshop_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          receipt_id: string
+          status?: Database["public"]["Enums"]["warranty_claim_status"]
+          updated_at?: string
+          user_id: string
+          workshop_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          receipt_id?: string
+          status?: Database["public"]["Enums"]["warranty_claim_status"]
+          updated_at?: string
+          user_id?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claims_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claims_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workshop_members: {
         Row: {
           created_at: string
@@ -339,6 +422,12 @@ export type Database = {
         | "In Repair"
         | "Ready for Pickup"
         | "Delivered"
+      warranty_claim_status:
+        | "Submitted"
+        | "Reviewing"
+        | "Approved"
+        | "Rejected"
+        | "Resolved"
       workshop_role: "owner" | "staff"
     }
     CompositeTypes: {
@@ -476,6 +565,13 @@ export const Constants = {
         "In Repair",
         "Ready for Pickup",
         "Delivered",
+      ],
+      warranty_claim_status: [
+        "Submitted",
+        "Reviewing",
+        "Approved",
+        "Rejected",
+        "Resolved",
       ],
       workshop_role: ["owner", "staff"],
     },

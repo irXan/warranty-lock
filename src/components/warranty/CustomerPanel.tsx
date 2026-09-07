@@ -18,6 +18,7 @@ import { decodeSharedReceipt } from "@/lib/receipt-share";
 import { ImmutableBadge } from "./ImmutableBadge";
 import { CustomerRepairPhotos } from "./CustomerRepairPhotos";
 import { MyRepairs } from "./MyRepairs";
+import { MyWarrantyClaims } from "./MyWarrantyClaims";
 import { ClaimRepairButton } from "./ClaimRepairButton";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -122,12 +123,15 @@ export function CustomerPanel() {
       </div>
 
       {showMyRepairs && (
-        <MyRepairs
-          onOpen={(id) => {
-            setQuery(id);
-            void runSearch(id);
-          }}
-        />
+        <>
+          <MyRepairs
+            onOpen={(id) => {
+              setQuery(id);
+              void runSearch(id);
+            }}
+          />
+          <MyWarrantyClaims />
+        </>
       )}
 
       {liveResult && <ReceiptDashboard receipt={liveResult} signedIn={!!user} />}
