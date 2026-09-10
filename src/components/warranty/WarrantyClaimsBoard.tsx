@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "./EmptyState";
 import {
+  ALLOWED_CLAIM_TRANSITIONS,
   listWorkshopWarrantyClaims,
   updateWarrantyClaimStatus,
-  WARRANTY_CLAIM_STATUSES,
   type WarrantyClaimStatus,
 } from "@/lib/warranty-claims.functions";
 import { cn } from "@/lib/utils";
