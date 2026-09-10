@@ -15,6 +15,15 @@ export type WarrantyClaimStatus = (typeof WARRANTY_CLAIM_STATUSES)[number];
 /** A claim is "open" while it is not finally closed. */
 const OPEN_STATUSES: WarrantyClaimStatus[] = ["Submitted", "Reviewing", "Approved"];
 
+/** Allowed forward-only status transitions; mirrored by a database trigger. */
+export const ALLOWED_CLAIM_TRANSITIONS: Record<WarrantyClaimStatus, WarrantyClaimStatus[]> = {
+  Submitted: ["Reviewing"],
+  Reviewing: ["Approved", "Rejected"],
+  Approved: ["Resolved"],
+  Rejected: [],
+  Resolved: [],
+};
+
 export type WarrantyClaimEvent = {
   status: WarrantyClaimStatus;
   note: string | null;
