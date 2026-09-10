@@ -15,6 +15,15 @@ export type WarrantyClaimStatus = (typeof WARRANTY_CLAIM_STATUSES)[number];
 /** A claim is "open" while it is not finally closed. */
 const OPEN_STATUSES: WarrantyClaimStatus[] = ["Submitted", "Reviewing", "Approved"];
 
+/** Allowed forward-only status transitions; mirrored by a database trigger. */
+export const ALLOWED_CLAIM_TRANSITIONS: Record<WarrantyClaimStatus, WarrantyClaimStatus[]> = {
+  Submitted: ["Reviewing"],
+  Reviewing: ["Approved", "Rejected"],
+  Approved: ["Resolved"],
+  Rejected: [],
+  Resolved: [],
+};
+
 export type WarrantyClaimEvent = {
   status: WarrantyClaimStatus;
   note: string | null;
@@ -236,12 +245,27 @@ export const updateWarrantyClaimStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ ok: boolean; message?: string }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Authorization: the update goes through the caller's RLS-scoped client, so
-    // only a member of the claim's workshop can change it.
+    // Authorization: reads/writes go through the caller's RLS-scoped client, so
+    // only a member of the claim's workshop can see or change it.
+    const { data: current } = await context.supabase
+      .from("warranty_claims")
+      .select("id, status")
+      .eq("id", data.claimId)
+      .maybeSingle();
+    if (!current) return { ok: false, message: "You don't have access to that claim." };
+
+    const from = current.status as WarrantyClaimStatus;
+    if (!ALLOWED_CLAIM_TRANSITIONS[from].includes(data.status)) {
+      return { ok: false, message: `A claim can't move from ${from} to ${data.status}.` };
+    }
+
+    // Only the status column is ever written; every other field is immutable
+    // and additionally protected by a database trigger.
     const { data: updated, error } = await context.supabase
       .from("warranty_claims")
       .update({ status: data.status })
       .eq("id", data.claimId)
+      .eq("status", from)
       .select("id")
       .maybeSingle();
     if (error) return { ok: false, message: "Couldn't update that claim." };
