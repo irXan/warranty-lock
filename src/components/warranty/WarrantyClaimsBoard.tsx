@@ -106,7 +106,10 @@ export function WarrantyClaimsBoard() {
                   className="h-9 flex-1"
                 />
                 <div className="flex flex-wrap gap-1.5">
-                  {WARRANTY_CLAIM_STATUSES.filter((s) => s !== c.status).map((s) => (
+                  {ALLOWED_CLAIM_TRANSITIONS[c.status].length === 0 && (
+                    <span className="text-xs text-muted-foreground">Closed — no further changes</span>
+                  )}
+                  {ALLOWED_CLAIM_TRANSITIONS[c.status].map((s) => (
                     <Button
                       key={s}
                       variant="outline"
