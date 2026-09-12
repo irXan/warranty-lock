@@ -1,5 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "./NotificationBell";
 
 export type View = "admin" | "customer";
 
