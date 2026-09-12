@@ -35,6 +35,63 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          claim_id: string | null
+          created_at: string
+          event_key: string
+          id: string
+          read_at: string | null
+          receipt_id: string | null
+          title: string
+          track_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          claim_id?: string | null
+          created_at?: string
+          event_key: string
+          id?: string
+          read_at?: string | null
+          receipt_id?: string | null
+          title: string
+          track_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          claim_id?: string | null
+          created_at?: string
+          event_key?: string
+          id?: string
+          read_at?: string | null
+          receipt_id?: string | null
+          title?: string
+          track_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
