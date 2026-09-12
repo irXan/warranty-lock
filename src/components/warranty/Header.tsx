@@ -1,5 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "./NotificationBell";
 
 export type View = "admin" | "customer";
 
@@ -26,17 +27,20 @@ export function Header({ view, onChange }: HeaderProps) {
           </div>
         </div>
 
-        <div
-          role="tablist"
-          aria-label="Switch view"
-          className="inline-flex rounded-full border border-border bg-card p-1 text-sm shadow-sm"
-        >
-          <ViewButton active={view === "admin"} onClick={() => onChange("admin")}>
-            Admin View
-          </ViewButton>
-          <ViewButton active={view === "customer"} onClick={() => onChange("customer")}>
-            Customer View
-          </ViewButton>
+        <div className="flex items-center gap-2">
+          <div
+            role="tablist"
+            aria-label="Switch view"
+            className="inline-flex rounded-full border border-border bg-card p-1 text-sm shadow-sm"
+          >
+            <ViewButton active={view === "admin"} onClick={() => onChange("admin")}>
+              Admin View
+            </ViewButton>
+            <ViewButton active={view === "customer"} onClick={() => onChange("customer")}>
+              Customer View
+            </ViewButton>
+          </div>
+          <NotificationBell />
         </div>
       </div>
     </header>
